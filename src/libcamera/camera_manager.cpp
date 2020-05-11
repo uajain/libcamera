@@ -185,7 +185,7 @@ void CameraManager::Private::addCamera(std::shared_ptr<Camera> &camera,
 		}
 	}
 
-	cameras_.push_back(std::move(camera));
+	cameras_.push_back(camera);
 
 	if (devnum) {
 		unsigned int index = cameras_.size() - 1;
@@ -376,6 +376,34 @@ std::shared_ptr<Camera> CameraManager::get(dev_t devnum)
 }
 
 /**
+ * \var CameraManager::newCameraAdded
+ * \brief Notify of a new camera added to the system
+ *
+ * This signal is emitted when a new camera is detected and successfully handled
+ * by the camera manager. The notification occurs alike for cameras detected
+ * when the manager is started with start() or when new cameras are later
+ * connected to the system. When the signal is emitted the new camera is already
+ * available from the list of cameras().
+ *
+ * The signal is emitted from the CameraManager thread. Applications shall
+ * minimize the time spent in the signal handler and shall in particular not
+ * perform any blocking operation.
+ */
+
+/**
+ * \var CameraManager::cameraRemoved
+ * \brief Notify of a new camera removed from the system
+ *
+ * This signal is emitted when a camera is removed from the system. When the
+ * signal is emitted the camera is not available from the list of cameras()
+ * anymore.
+ *
+ * The signal is emitted from the CameraManager thread. Applications shall
+ * minimize the time spent in the signal handler and shall in particular not
+ * perform any blocking operation.
+ */
+
+/**
  * \brief Add a camera to the camera manager
  * \param[in] camera The camera to be added
  * \param[in] devnum The device number to associate with \a camera
@@ -394,6 +422,7 @@ void CameraManager::addCamera(std::shared_ptr<Camera> camera, dev_t devnum)
 	ASSERT(Thread::current() == p_.get());
 
 	p_->addCamera(camera, devnum);
+	newCameraAdded.emit(camera);
 }
 
 /**
@@ -406,11 +435,12 @@ void CameraManager::addCamera(std::shared_ptr<Camera> camera, dev_t devnum)
  *
  * \context This function shall be called from the CameraManager thread.
  */
-void CameraManager::removeCamera(Camera *camera)
+void CameraManager::removeCamera(std::shared_ptr<Camera> camera)
 {
 	ASSERT(Thread::current() == p_.get());
 
-	p_->removeCamera(camera);
+	p_->removeCamera(camera.get());
+	cameraRemoved.emit(camera);
 }
 
 /**
