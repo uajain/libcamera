@@ -153,12 +153,12 @@ void CameraManager::Private::enumerateDevices()
 		}
 	}
 
-	/* \todo register hot-plug callback here */
+	enumerator_->deviceAdded.connect(this, &Private::enumerateDevices);
 }
 
 void CameraManager::Private::cleanup()
 {
-	/* \todo unregister hot-plug callback here */
+	enumerator_->deviceAdded.disconnect(this, &Private::enumerateDevices);
 
 	/*
 	 * Release all references to cameras and pipeline handlers to ensure
