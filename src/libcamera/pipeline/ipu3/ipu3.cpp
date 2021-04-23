@@ -1285,6 +1285,7 @@ void IPU3CameraData::cio2BufferReady(FrameBuffer *buffer)
 	ev.op = ipa::ipu3::EventFillParams;
 	ev.frame = info->id;
 	ev.bufferId = info->paramBuffer->cookie();
+	ev.controls = request->metadata();
 	ipa_->processEvent(ev);
 }
 
@@ -1314,6 +1315,8 @@ void IPU3CameraData::statBufferReady(FrameBuffer *buffer)
 	if (!info)
 		return;
 
+	Request *request = info->request;
+
 	if (buffer->metadata().status == FrameMetadata::FrameCancelled) {
 		info->metadataProcessed = true;
 
@@ -1321,7 +1324,6 @@ void IPU3CameraData::statBufferReady(FrameBuffer *buffer)
 		* tryComplete() will delete info if it completes the IPU3Frame.
 		* In that event, we must have obtained the Request before hand.
 		*/
-		Request *request = info->request;
 
 		if (frameInfos_.tryComplete(info))
 			pipe_->completeRequest(request);
@@ -1333,6 +1335,7 @@ void IPU3CameraData::statBufferReady(FrameBuffer *buffer)
 	ev.op = ipa::ipu3::EventStatReady;
 	ev.frame = info->id;
 	ev.bufferId = info->statBuffer->cookie();
+	ev.controls = request->metadata();
 	ipa_->processEvent(ev);
 }
 
