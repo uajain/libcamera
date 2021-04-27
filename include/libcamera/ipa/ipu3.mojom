@@ -25,13 +25,55 @@ struct IPU3Action {
 	libcamera.ControlList controls;
 };
 
+/**
+ * \struct IPAConfigInfo
+ * \brief Information to be passed from IPU3 pipeline-handler to IPA
+ *
+ * The IPAConfigInfo structure stores the data passed from IPU3 pipeline-handler
+ * to the IPAIPU3Interface::configure(). The structure provides extensibility
+ * for additional configuration data as required, for closed-source or
+ * open-source IPAs' configure() phases.
+ */
+
+/**
+ * \var IPAConfigInfo::sensorInfo
+ * \brief Camera sensor information
+ *
+ * Provides the camera sensor information such as model name, pixel-rate,
+ * output-size and so on. Refer to libcamera::CameraSensorInfo for further
+ * details.
+ */
+
+ /**
+ * \var IPAConfigInfo::entityControls
+ * \brief Controls supported by the sensor
+ *
+ * A map of V4L2 controls supported by the sensor in order to read or write
+ * control values to them.
+ */
+
+ /**
+ * \var IPAConfigInfo::bdsOutputSize
+ * \brief Size of ImgU BDS rectangle
+ */
+
+ /**
+ * \var IPAConfigInfo::iif
+ * \brief Size of ImgU input-feeder rectangle
+ */
+struct IPAConfigInfo {
+	libcamera.IPACameraSensorInfo sensorInfo;
+	map<uint32, ControlInfoMap> entityControls;
+	libcamera.Size bdsOutputSize;
+	libcamera.Size iif;
+};
+
 interface IPAIPU3Interface {
 	init(libcamera.IPASettings settings) => (int32 ret);
 	start() => (int32 ret);
 	stop();
 
-	configure(map<uint32, libcamera.ControlInfoMap> entityControls,
-		  libcamera.Size bdsOutputSize) => ();
+	configure(IPAConfigInfo configInfo);
 
 	mapBuffers(array<libcamera.IPABuffer> buffers);
 	unmapBuffers(array<uint32> ids);
