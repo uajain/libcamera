@@ -4,7 +4,6 @@ ipa_name = 'ipa_ipu3'
 
 ipu3_ipa_sources = files([
     'ipu3.cpp',
-    'ipu3_agc.cpp',
     'ipu3_awb.cpp',
 ])
 
