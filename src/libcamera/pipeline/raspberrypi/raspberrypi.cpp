@@ -211,7 +211,7 @@ public:
 	BayerFormat::Order nativeBayerOrder_;
 
 	/* For handling digital zoom. */
-	CameraSensorInfo sensorInfo_;
+	IPACameraSensorInfo sensorInfo_;
 	Rectangle ispCrop_; /* crop in ISP (camera mode) pixels */
 	Rectangle scalerCrop_; /* crop in sensor native pixels */
 	Size ispMinCropSize_;
@@ -1276,7 +1276,7 @@ int RPiCameraData::configureIPA(const CameraConfiguration *config)
 		ipaConfig.lsTableHandle = lsTable_;
 	}
 
-	/* We store the CameraSensorInfo for digital zoom calculations. */
+	/* We store the IPACameraSensorInfo for digital zoom calculations. */
 	int ret = sensor_->sensorInfo(&sensorInfo_);
 	if (ret) {
 		LOG(RPI, Error) << "Failed to retrieve camera sensor info";
