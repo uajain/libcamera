@@ -20,6 +20,7 @@
 #include <libcamera/base/log.h>
 #include <libcamera/base/signal.h>
 
+#include <libcamera/color_space.h>
 #include <libcamera/framebuffer.h>
 #include <libcamera/geometry.h>
 #include <libcamera/pixel_format.h>
@@ -167,6 +168,7 @@ public:
 
 	V4L2PixelFormat fourcc;
 	Size size;
+	std::optional<ColorSpace> colorSpace;
 
 	std::array<Plane, 3> planes;
 	unsigned int planesCount = 0;

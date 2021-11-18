@@ -371,16 +371,26 @@ bool V4L2BufferCache::Entry::operator==(const FrameBuffer &buffer) const
  */
 
 /**
- * \var V4L2DeviceFormat::size
- * \brief The image size in pixels
- */
-
-/**
  * \var V4L2DeviceFormat::fourcc
  * \brief The fourcc code describing the pixel encoding scheme
  *
  * The fourcc code, as defined by the V4L2 API with the V4L2_PIX_FMT_* macros,
  * that identifies the image format pixel encoding scheme.
+ */
+
+/**
+ * \var V4L2DeviceFormat::size
+ * \brief The image size in pixels
+ */
+
+/**
+ * \var V4L2DeviceFormat::colorSpace
+ * \brief The color space of the pixels
+ *
+ * The color space of the image. When setting the format this may be
+ * unset, in which case the driver gets to use its default color space.
+ * After being set, this value should contain the color space that the
+ * was actually used.
  */
 
 /**
@@ -879,6 +889,10 @@ int V4L2VideoDevice::getFormatMultiplane(V4L2DeviceFormat *format)
 	format->fourcc = V4L2PixelFormat(pix->pixelformat);
 	format->planesCount = pix->num_planes;
 
+	format->colorSpace = toColorSpace(*pix);
+	if (!format->colorSpace)
+		LOG(V4L2, Error) << "Retrieved unrecognised color space";
+
 	for (unsigned int i = 0; i < format->planesCount; ++i) {
 		format->planes[i].bpl = pix->plane_fmt[i].bytesperline;
 		format->planes[i].size = pix->plane_fmt[i].sizeimage;
@@ -893,12 +907,21 @@ int V4L2VideoDevice::trySetFormatMultiplane(V4L2DeviceFormat *format, bool set)
 	struct v4l2_pix_format_mplane *pix = &v4l2Format.fmt.pix_mp;
 	int ret;
 
+	if (!format->colorSpace)
+		LOG(V4L2, Warning) << "Setting undefined color space";
+
 	v4l2Format.type = bufferType_;
 	pix->width = format->size.width;
 	pix->height = format->size.height;
 	pix->pixelformat = format->fourcc;
 	pix->num_planes = format->planesCount;
 	pix->field = V4L2_FIELD_NONE;
+
+	ret = fromColorSpace(format->colorSpace, *pix);
+	if (ret < 0)
+		LOG(V4L2, Warning)
+			<< "Setting color space unrecognised by V4L2: "
+			<< ColorSpace::toString(format->colorSpace);
 
 	ASSERT(pix->num_planes <= std::size(pix->plane_fmt));
 
@@ -928,6 +951,10 @@ int V4L2VideoDevice::trySetFormatMultiplane(V4L2DeviceFormat *format, bool set)
 		format->planes[i].size = pix->plane_fmt[i].sizeimage;
 	}
 
+	format->colorSpace = toColorSpace(*pix);
+	if (!format->colorSpace)
+		LOG(V4L2, Warning) << "Unrecognised color space has been set";
+
 	return 0;
 }
 
@@ -951,6 +978,10 @@ int V4L2VideoDevice::getFormatSingleplane(V4L2DeviceFormat *format)
 	format->planes[0].bpl = pix->bytesperline;
 	format->planes[0].size = pix->sizeimage;
 
+	format->colorSpace = toColorSpace(*pix);
+	if (!format->colorSpace)
+		LOG(V4L2, Error) << "Retrieved unrecognised color space";
+
 	return 0;
 }
 
@@ -960,12 +991,22 @@ int V4L2VideoDevice::trySetFormatSingleplane(V4L2DeviceFormat *format, bool set)
 	struct v4l2_pix_format *pix = &v4l2Format.fmt.pix;
 	int ret;
 
+	if (!format->colorSpace)
+		LOG(V4L2, Error) << "Trying to set unrecognised color space";
+
 	v4l2Format.type = bufferType_;
 	pix->width = format->size.width;
 	pix->height = format->size.height;
 	pix->pixelformat = format->fourcc;
 	pix->bytesperline = format->planes[0].bpl;
 	pix->field = V4L2_FIELD_NONE;
+
+	ret = fromColorSpace(format->colorSpace, *pix);
+	if (ret < 0)
+		LOG(V4L2, Warning)
+			<< "Set color space unrecognised by V4L2: "
+			<< ColorSpace::toString(format->colorSpace);
+
 	ret = ioctl(set ? VIDIOC_S_FMT : VIDIOC_TRY_FMT, &v4l2Format);
 	if (ret) {
 		LOG(V4L2, Error)
@@ -984,6 +1025,10 @@ int V4L2VideoDevice::trySetFormatSingleplane(V4L2DeviceFormat *format, bool set)
 	format->planesCount = 1;
 	format->planes[0].bpl = pix->bytesperline;
 	format->planes[0].size = pix->sizeimage;
+
+	format->colorSpace = toColorSpace(*pix);
+	if (!format->colorSpace)
+		LOG(V4L2, Error) << "Undefined color space has been set";
 
 	return 0;
 }
