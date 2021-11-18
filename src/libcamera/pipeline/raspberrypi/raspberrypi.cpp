@@ -93,6 +93,7 @@ V4L2DeviceFormat toV4L2DeviceFormat(const V4L2SubdeviceFormat &format,
 
 	deviceFormat.fourcc = V4L2PixelFormat::fromPixelFormat(pix);
 	deviceFormat.size = format.size;
+	deviceFormat.colorSpace = format.colorSpace;
 	return deviceFormat;
 }
 
@@ -126,6 +127,7 @@ V4L2SubdeviceFormat findBestFormat(const SensorFormats &formatsMap, const Size &
 {
 	double bestScore = std::numeric_limits<double>::max(), score;
 	V4L2SubdeviceFormat bestFormat;
+	bestFormat.colorSpace = ColorSpace::Raw;
 
 #define PENALTY_AR		1500.0
 #define PENALTY_8BIT		2000.0
@@ -332,6 +334,8 @@ CameraConfiguration::Status RPiCameraConfiguration::validate()
 	if (config_.empty())
 		return Invalid;
 
+	status = validateColorSpaces(true);
+
 	/*
 	 * What if the platform has a non-90 degree rotation? We can't even
 	 * "adjust" the configuration and carry on. Alternatively, raising an
@@ -494,10 +498,21 @@ CameraConfiguration::Status RPiCameraConfiguration::validate()
 		V4L2DeviceFormat format;
 		format.fourcc = V4L2PixelFormat::fromPixelFormat(cfg.pixelFormat);
 		format.size = cfg.size;
+		format.colorSpace = cfg.colorSpace;
+		LOG(RPI, Debug)
+			<< "Try color space " << ColorSpace::toString(cfg.colorSpace);
 
 		int ret = dev->tryFormat(&format);
 		if (ret)
 			return Invalid;
+		if (!format.colorSpace || cfg.colorSpace != format.colorSpace) {
+			status = Adjusted;
+			LOG(RPI, Warning)
+				<< "Color space changed from "
+				<< ColorSpace::toString(cfg.colorSpace) << " to "
+				<< ColorSpace::toString(format.colorSpace);
+		}
+		cfg.colorSpace = format.colorSpace;
 
 		cfg.stride = format.planes[0].bpl;
 		cfg.frameSize = format.planes[0].size;
@@ -522,6 +537,7 @@ CameraConfiguration *PipelineHandlerRPi::generateConfiguration(Camera *camera,
 	PixelFormat pixelFormat;
 	V4L2VideoDevice::Formats fmts;
 	Size size;
+	std::optional<ColorSpace> colorSpace;
 
 	if (roles.empty())
 		return config;
@@ -536,6 +552,7 @@ CameraConfiguration *PipelineHandlerRPi::generateConfiguration(Camera *camera,
 			pixelFormat = mbusCodeToPixelFormat(sensorFormat.mbus_code,
 							    BayerFormat::Packing::CSI2);
 			ASSERT(pixelFormat.isValid());
+			colorSpace = ColorSpace::Raw;
 			bufferCount = 2;
 			rawCount++;
 			break;
@@ -543,6 +560,7 @@ CameraConfiguration *PipelineHandlerRPi::generateConfiguration(Camera *camera,
 		case StreamRole::StillCapture:
 			fmts = data->isp_[Isp::Output0].dev()->formats();
 			pixelFormat = formats::NV12;
+			colorSpace = ColorSpace::Jpeg;
 			/* Return the largest sensor resolution. */
 			size = data->sensor_->resolution();
 			bufferCount = 1;
@@ -560,6 +578,8 @@ CameraConfiguration *PipelineHandlerRPi::generateConfiguration(Camera *camera,
 			 */
 			fmts = data->isp_[Isp::Output0].dev()->formats();
 			pixelFormat = formats::YUV420;
+			/* This will be reasonable for many applications. */
+			colorSpace = ColorSpace::Rec709;
 			size = { 1920, 1080 };
 			bufferCount = 4;
 			outCount++;
@@ -568,6 +588,7 @@ CameraConfiguration *PipelineHandlerRPi::generateConfiguration(Camera *camera,
 		case StreamRole::Viewfinder:
 			fmts = data->isp_[Isp::Output0].dev()->formats();
 			pixelFormat = formats::ARGB8888;
+			colorSpace = ColorSpace::Jpeg;
 			size = { 800, 600 };
 			bufferCount = 4;
 			outCount++;
@@ -599,6 +620,7 @@ CameraConfiguration *PipelineHandlerRPi::generateConfiguration(Camera *camera,
 		StreamConfiguration cfg(formats);
 		cfg.size = size;
 		cfg.pixelFormat = pixelFormat;
+		cfg.colorSpace = colorSpace;
 		cfg.bufferCount = bufferCount;
 		config->addConfiguration(cfg);
 	}
@@ -703,6 +725,7 @@ int PipelineHandlerRPi::configure(Camera *camera, CameraConfiguration *config)
 		V4L2PixelFormat fourcc = V4L2PixelFormat::fromPixelFormat(cfg.pixelFormat);
 		format.size = cfg.size;
 		format.fourcc = fourcc;
+		format.colorSpace = cfg.colorSpace;
 
 		LOG(RPI, Debug) << "Setting " << stream->name() << " to "
 				<< format.toString();
@@ -717,6 +740,23 @@ int PipelineHandlerRPi::configure(Camera *camera, CameraConfiguration *config)
 				<< ", returned " << format.toString();
 			return -EINVAL;
 		}
+
+		if (!format.colorSpace || cfg.colorSpace != format.colorSpace) {
+			/*
+			 * We should have been through validate() before so this
+			 * shouldn't be possible, but we mustn't sweep color space
+			 * problems under the carpet.
+			 */
+			LOG(RPI, Warning)
+				<< "Unexpected color space ("
+				<< ColorSpace::toString(cfg.colorSpace) << " to "
+				<< ColorSpace::toString(format.colorSpace) << ") in stream "
+				<< stream->name();
+			cfg.colorSpace = format.colorSpace;
+		}
+		LOG(RPI, Debug)
+			<< "Stream " << stream->name() << " has color space "
+			<< ColorSpace::toString(cfg.colorSpace);
 
 		cfg.setStream(stream);
 		stream->setExternal(true);
@@ -742,6 +782,8 @@ int PipelineHandlerRPi::configure(Camera *camera, CameraConfiguration *config)
 		format = {};
 		format.size = maxSize;
 		format.fourcc = V4L2PixelFormat::fromPixelFormat(formats::YUV420);
+		/* No one asked for output, so the color space doesn't matter. */
+		format.colorSpace = ColorSpace::Jpeg;
 		ret = data->isp_[Isp::Output0].dev()->setFormat(&format);
 		if (ret) {
 			LOG(RPI, Error)
