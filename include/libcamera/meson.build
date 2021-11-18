@@ -5,6 +5,7 @@ libcamera_include_dir = 'libcamera' / 'libcamera'
 libcamera_public_headers = files([
     'camera.h',
     'camera_manager.h',
+    'color_space.h',
     'compiler.h',
     'controls.h',
     'file_descriptor.h',
