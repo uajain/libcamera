@@ -17,6 +17,7 @@
 #include <libcamera/base/signal.h>
 #include <libcamera/base/span.h>
 
+#include <libcamera/color_space.h>
 #include <libcamera/controls.h>
 
 namespace libcamera {
@@ -43,6 +44,12 @@ public:
 	Signal<uint32_t> frameStart;
 
 	void updateControlInfo();
+
+	template<typename T>
+	static std::optional<ColorSpace> toColorSpace(const T &v4l2Format);
+
+	template<typename T>
+	static int fromColorSpace(const std::optional<ColorSpace> &colorSpace, T &v4l2Format);
 
 protected:
 	V4L2Device(const std::string &deviceNode);
