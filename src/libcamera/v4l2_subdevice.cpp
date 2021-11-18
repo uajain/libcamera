@@ -169,6 +169,16 @@ const std::map<uint32_t, V4L2SubdeviceFormatInfo> formatInfoMap = {
  */
 
 /**
+ * \var V4L2SubdeviceFormat::colorSpace
+ * \brief The color space of the pixels
+ *
+ * The color space of the image. When setting the format this may be
+ * unset, in which case the driver gets to use its default color space.
+ * After being set, this value should contain the color space that the
+ * was actually used.
+ */
+
+/**
  * \brief Assemble and return a string describing the format
  * \return A string describing the V4L2SubdeviceFormat
  */
@@ -400,6 +410,16 @@ int V4L2Subdevice::getFormat(unsigned int pad, V4L2SubdeviceFormat *format,
 	format->size.height = subdevFmt.format.height;
 	format->mbus_code = subdevFmt.format.code;
 
+	format->colorSpace = toColorSpace(subdevFmt.format);
+	/*
+	 * This warning can be ignored on metadata pads. These are normally
+	 * pads other than zero.
+	 * \todo find a way to detect metadata pads and ignore them
+	 */
+	if (!format->colorSpace)
+		LOG(V4L2, Warning)
+			<< "Retrieved unrecognised color space on pad " << pad;
+
 	return 0;
 }
 
@@ -418,6 +438,9 @@ int V4L2Subdevice::getFormat(unsigned int pad, V4L2SubdeviceFormat *format,
 int V4L2Subdevice::setFormat(unsigned int pad, V4L2SubdeviceFormat *format,
 			     Whence whence)
 {
+	if (!format->colorSpace)
+		LOG(V4L2, Error) << "Setting an undefined color space";
+
 	struct v4l2_subdev_format subdevFmt = {};
 	subdevFmt.which = whence == ActiveFormat ? V4L2_SUBDEV_FORMAT_ACTIVE
 			: V4L2_SUBDEV_FORMAT_TRY;
@@ -427,7 +450,13 @@ int V4L2Subdevice::setFormat(unsigned int pad, V4L2SubdeviceFormat *format,
 	subdevFmt.format.code = format->mbus_code;
 	subdevFmt.format.field = V4L2_FIELD_NONE;
 
-	int ret = ioctl(VIDIOC_SUBDEV_S_FMT, &subdevFmt);
+	int ret = fromColorSpace(format->colorSpace, subdevFmt.format);
+	if (ret < 0)
+		LOG(V4L2, Warning)
+			<< "Setting color space unrecognised by V4L2: "
+			<< ColorSpace::toString(format->colorSpace);
+
+	ret = ioctl(VIDIOC_SUBDEV_S_FMT, &subdevFmt);
 	if (ret) {
 		LOG(V4L2, Error)
 			<< "Unable to set format on pad " << pad
@@ -438,6 +467,10 @@ int V4L2Subdevice::setFormat(unsigned int pad, V4L2SubdeviceFormat *format,
 	format->size.width = subdevFmt.format.width;
 	format->size.height = subdevFmt.format.height;
 	format->mbus_code = subdevFmt.format.code;
+
+	format->colorSpace = toColorSpace(subdevFmt.format);
+	if (!format->colorSpace)
+		LOG(V4L2, Warning) << "Unrecognised color space has been set";
 
 	return 0;
 }
