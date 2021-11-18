@@ -330,6 +330,20 @@ StreamConfiguration::StreamConfiguration(const StreamFormats &formats)
  */
 
 /**
+ * \var StreamConfiguration::colorSpace
+ * \brief The ColorSpace for this stream
+ *
+ * A suitable color space may be set here or chosen by an application.
+ * Alternatively the color space may be left unset, in which case it will
+ * be up to the driver to choose a color space.
+ *
+ * If the system cannot deliver the requested color space, the validate()
+ * method will overwrite the value here with what it can deliver. Note that
+ * platforms may enforce extra contraints here, such as requiring all output
+ * streams to share the same color space.
+ */
+
+/**
  * \fn StreamConfiguration::stream()
  * \brief Retrieve the stream associated with the configuration
  *
