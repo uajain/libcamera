@@ -69,6 +69,8 @@ public:
 protected:
 	CameraConfiguration();
 
+	Status validateColorSpaces(bool sharedColorSpace);
+
 	std::vector<StreamConfiguration> config_;
 };
 

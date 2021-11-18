@@ -20,6 +20,7 @@
 
 #include "libcamera/internal/camera.h"
 #include "libcamera/internal/camera_controls.h"
+#include "libcamera/internal/formats.h"
 #include "libcamera/internal/pipeline_handler.h"
 
 /**
@@ -312,6 +313,56 @@ bool CameraConfiguration::empty() const
 std::size_t CameraConfiguration::size() const
 {
 	return config_.size();
+}
+
+static bool isRaw(const PixelFormat &pixFmt)
+{
+	const PixelFormatInfo &info = PixelFormatInfo::info(pixFmt);
+	return info.isValid() &&
+	       info.colourEncoding == PixelFormatInfo::ColourEncodingRAW;
+}
+
+CameraConfiguration::Status CameraConfiguration::validateColorSpaces(bool sharedColorSpace)
+{
+	Status status = Valid;
+
+	/* Find the largest non-raw stream (if any). */
+	int index = -1;
+	for (unsigned int i = 0; i < config_.size(); i++) {
+		const StreamConfiguration &cfg = config_[i];
+		if (!isRaw(cfg.pixelFormat) && (index < 0 || cfg.size > config_[i].size))
+			index = i;
+	}
+
+	/*
+	 * Here we force raw streams to the correct color space. We handle
+	 * the case where all output streams are to share a color space,
+	 * which will match the color space of the largest (non-raw) stream.
+	 */
+	for (auto &cfg : config_) {
+		std::optional<ColorSpace> initialColorSpace = cfg.colorSpace;
+
+		if (isRaw(cfg.pixelFormat))
+			cfg.colorSpace = ColorSpace::Raw;
+		else if (sharedColorSpace) {
+			/*
+			 * When all outputs share a color space, use the biggest
+			 * output if that was set. If that was blank, but this
+			 * stream's is not, then use this stream's color space for
+			 * largest stream.
+			 * (index must be != -1 if there are any non-raw streams.)
+			 */
+			if (config_[index].colorSpace)
+				cfg.colorSpace = config_[index].colorSpace;
+			else if (cfg.colorSpace)
+				config_[index].colorSpace = cfg.colorSpace;
+		}
+
+		if (cfg.colorSpace != initialColorSpace)
+			status = Adjusted;
+	}
+
+	return status;
 }
 
 /**
