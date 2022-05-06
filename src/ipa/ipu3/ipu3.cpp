@@ -50,6 +50,8 @@ static constexpr uint32_t kMaxGridHeight = 60;
 static constexpr uint32_t kMinCellSizeLog2 = 3;
 /* log2 of the maximum grid cell width and height, in pixels */
 static constexpr uint32_t kMaxCellSizeLog2 = 6;
+/* Maximum number of frame contexts to be held */
+static constexpr uint32_t kMaxFrameContexts = 16;
 
 namespace libcamera {
 
@@ -315,7 +317,7 @@ int IPAIPU3::init(const IPASettings &settings,
 	}
 
 	/* Clean context */
-	context_ = {};
+	//context_ = {};
 	context_.configuration.sensor.lineDuration = sensorInfo.lineLength * 1.0s / sensorInfo.pixelRate;
 
 	/* Construct our Algorithms */
@@ -350,6 +352,7 @@ int IPAIPU3::start()
  */
 void IPAIPU3::stop()
 {
+	context_.frameContexts.clear();
 }
 
 /**
@@ -458,7 +461,9 @@ int IPAIPU3::configure(const IPAConfigInfo &configInfo,
 
 	/* Clean IPAActiveState at each reconfiguration. */
 	context_.activeState = {};
-	context_.frameContext = {};
+	//context_.frameContextQueue = {};
+	context_.frameContexts.clear();
+	context_.frameContexts.reserve(kMaxFrameContexts);
 
 	if (!validateSensorControls()) {
 		LOG(IPAIPU3, Error) << "Sensor control validation failed.";
@@ -510,6 +515,15 @@ void IPAIPU3::unmapBuffers(const std::vector<unsigned int> &ids)
 
 void IPAIPU3::frameCompleted([[maybe_unused]] const uint32_t frame)
 {
+	/* We don't need this now, since we are on a ring buffer
+	while (!context_.frameContextQueue.empty()) {
+		auto &fc = context_.frameContextQueue.front();
+		if (fc.frame <= frame)
+			context_.frameContextQueue.pop();
+		else
+			break;
+	}
+	*/
 }
 
 /**
@@ -574,15 +588,26 @@ void IPAIPU3::processStatsBuffer(const uint32_t frame,
 	const ipu3_uapi_stats_3a *stats =
 		reinterpret_cast<ipu3_uapi_stats_3a *>(mem.data());
 
-	context_.frameContext.sensor.exposure = sensorControls.get(V4L2_CID_EXPOSURE).get<int32_t>();
-	context_.frameContext.sensor.gain = camHelper_->gain(sensorControls.get(V4L2_CID_ANALOGUE_GAIN).get<int32_t>());
+	//auto &frameContext = context_.frameContextQueue.front();
+	IPAFrameContext &frameContext = context_.frameContexts[frame % kMaxFrameContexts];
+
+	/*
+	 * An assert might be too harsh here. We want to know the cases
+	 * where the front of the queue (implies the current frame in processing,
+	 * diverges from the frame parameter of this function
+	 * \todo Identify those cases - e.g. frame drop?
+	 */
+	ASSERT(frameContext.frame == frame);
+
+	frameContext.sensor.exposure = sensorControls.get(V4L2_CID_EXPOSURE).get<int32_t>();
+	frameContext.sensor.gain = camHelper_->gain(sensorControls.get(V4L2_CID_ANALOGUE_GAIN).get<int32_t>());
 
 	double lineDuration = context_.configuration.sensor.lineDuration.get<std::micro>();
 	int32_t vBlank = context_.configuration.sensor.defVBlank;
 	ControlList ctrls(controls::controls);
 
 	for (auto const &algo : algorithms_)
-		algo->process(context_, stats);
+		algo->process(context_, &frameContext, stats);
 
 	setControls(frame);
 
@@ -590,11 +615,11 @@ void IPAIPU3::processStatsBuffer(const uint32_t frame,
 	int64_t frameDuration = (vBlank + sensorInfo_.outputSize.height) * lineDuration;
 	ctrls.set(controls::FrameDuration, frameDuration);
 
-	ctrls.set(controls::AnalogueGain, context_.frameContext.sensor.gain);
+	ctrls.set(controls::AnalogueGain, frameContext.sensor.gain);
 
 	ctrls.set(controls::ColourTemperature, context_.activeState.awb.temperatureK);
 
-	ctrls.set(controls::ExposureTime, context_.frameContext.sensor.exposure * lineDuration);
+	ctrls.set(controls::ExposureTime, frameContext.sensor.exposure * lineDuration);
 
 	/*
 	 * \todo The Metadata provides a path to getting extended data
@@ -617,10 +642,14 @@ void IPAIPU3::processStatsBuffer(const uint32_t frame,
  * Parse the request to handle any IPA-managed controls that were set from the
  * application such as manual sensor settings.
  */
-void IPAIPU3::queueRequest([[maybe_unused]] const uint32_t frame,
+void IPAIPU3::queueRequest(const uint32_t frame,
 			   [[maybe_unused]] const ControlList &controls)
 {
 	/* \todo Start processing for 'frame' based on 'controls'. */
+	//context_.frameContexts.emplace_back(frame, controls); // this works
+	auto iter = context_.frameContexts.begin() + (frame % kMaxFrameContexts);
+	context_.frameContexts.emplace(iter, frame, controls); // this works
+
 }
 
 /**

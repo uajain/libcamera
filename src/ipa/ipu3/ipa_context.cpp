@@ -58,8 +58,8 @@ namespace libcamera::ipa::ipu3 {
  * \var IPAContext::configuration
  * \brief The IPA session configuration, immutable during the session
  *
- * \var IPAContext::frameContext
- * \brief The frame context for the frame being processed
+ * \var IPAContext::frameContextQueue
+ * \brief FIFO container of IPAFrameContext for all the frames being queued
  *
  * \var IPAContext::activeState
  * \brief The current state of IPA algorithms
@@ -183,6 +183,15 @@ namespace libcamera::ipa::ipu3 {
  */
 
 /**
+ * \brief Construct a IPAFrameContext instance
+ */
+IPAFrameContext::IPAFrameContext(uint32_t frame, const ControlList &reqControls)
+	: frame(frame), frameControls(reqControls)
+{
+	sensor = {};
+}
+
+/**
  * \var IPAFrameContext::sensor
  * \brief Effective sensor values that were applied for the frame
  *
@@ -191,6 +200,9 @@ namespace libcamera::ipa::ipu3 {
  *
  * \var IPAFrameContext::sensor.gain
  * \brief Analogue gain multiplier
+ *
+ * \var IPAFrameContext::frame
+ * \brief The frame number associated with this IPAFrameContext
  */
 
 } /* namespace libcamera::ipa::ipu3 */

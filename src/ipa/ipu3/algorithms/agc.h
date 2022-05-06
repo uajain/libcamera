@@ -28,14 +28,15 @@ public:
 	~Agc() = default;
 
 	int configure(IPAContext &context, const IPAConfigInfo &configInfo) override;
-	void process(IPAContext &context, const ipu3_uapi_stats_3a *stats) override;
+	void process(IPAContext &context, IPAFrameContext *frameContext,
+		     const ipu3_uapi_stats_3a *stats) override;
 
 private:
 	double measureBrightness(const ipu3_uapi_stats_3a *stats,
 				 const ipu3_uapi_grid_config &grid) const;
 	utils::Duration filterExposure(utils::Duration currentExposure);
-	void computeExposure(IPAContext &context, double yGain,
-			     double iqMeanGain);
+	void computeExposure(IPAContext &context, IPAFrameContext *frameContext,
+						 double yGain, double iqMeanGain);
 	double estimateLuminance(IPAActiveState &activeState,
 				 const ipu3_uapi_grid_config &grid,
 				 const ipu3_uapi_stats_3a *stats,

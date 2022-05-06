@@ -8,10 +8,13 @@
 
 #pragma once
 
+#include <vector>
+
 #include <linux/intel-ipu3.h>
 
 #include <libcamera/base/utils.h>
 
+#include <libcamera/controls.h>
 #include <libcamera/geometry.h>
 
 namespace libcamera {
@@ -71,17 +74,23 @@ struct IPAActiveState {
 };
 
 struct IPAFrameContext {
+	IPAFrameContext(uint32_t frame, const ControlList &reqControls);
+
 	struct {
 		uint32_t exposure;
 		double gain;
 	} sensor;
+
+	uint32_t frame;
+	ControlList frameControls;
 };
 
 struct IPAContext {
 	IPASessionConfiguration configuration;
 	IPAActiveState activeState;
 
-	IPAFrameContext frameContext;
+	//std::queue<IPAFrameContext> frameContextQueue;
+	std::vector<IPAFrameContext> frameContexts;
 };
 
 } /* namespace ipa::ipu3 */
