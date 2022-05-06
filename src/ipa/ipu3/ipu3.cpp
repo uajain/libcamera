@@ -161,6 +161,8 @@ private:
 	void setControls(unsigned int frame);
 	void calculateBdsGrid(const Size &bdsOutputSize);
 
+	void frameCompleted(const uint32_t frame);
+
 	std::map<unsigned int, MappedFrameBuffer> buffers_;
 
 	ControlInfoMap sensorCtrls_;
@@ -505,6 +507,10 @@ void IPAIPU3::unmapBuffers(const std::vector<unsigned int> &ids)
 	}
 }
 
+void IPAIPU3::frameCompleted([[maybe_unused]] const uint32_t frame)
+{
+}
+
 /**
  * \brief Fill and return a buffer with ISP processing parameters for a frame
  * \param[in] frame The frame number
@@ -598,6 +604,8 @@ void IPAIPU3::processStatsBuffer(const uint32_t frame,
 	 */
 
 	metadataReady.emit(frame, ctrls);
+
+	frameCompleted(frame);
 }
 
 /**
