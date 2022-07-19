@@ -11,7 +11,7 @@
 #
 # - media-ctl (from v4l-utils git://linuxtv.org/v4l-utils.git)
 # - raw2pnm (from nvt https://github.com/intel/nvt.git)
-# - yavta (from git://git.ideasonboard.org/yavta.git)
+# - v4l2-ctl (from http://git.linuxtv.org/v4l-utils.git)
 
 imgu_entity="ipu3-imgu 0"
 
@@ -37,17 +37,19 @@ configure_pipeline() {
 	local enable_3a=1
 	local enable_out=1
 	local enable_vf=1
+	local enable_param=1
 	local mode=0
 
 	# Configure the links
 	$mediactl -r
 	$mediactl -l "\"$imgu_entity input\":0 -> \"$imgu_entity\":0[1]"
+	$mediactl -l "\"$imgu_entity parameters\":0 -> \"$imgu_entity\":1[$enable_param]"
 	$mediactl -l "\"$imgu_entity\":2 -> \"$imgu_entity output\":0[$enable_out]"
 	$mediactl -l "\"$imgu_entity\":3 -> \"$imgu_entity viewfinder\":0[$enable_vf]"
 	$mediactl -l "\"$imgu_entity\":4 -> \"$imgu_entity 3a stat\":0[$enable_3a]"
 
 	# Select processing mode (0 for video, 1 for still image)
-	yavta --no-query -w "0x009819c1 $mode" $($mediactl -e "$imgu_entity")
+	v4l2-ctl -d $($mediactl -e "$imgu_entity") -c 0x009819c1=$mode
 
 	# Set formats. The media bus code doesn't matter as it is ignored by the
 	# driver. We should use the FIXED format, but media-ctl doesn't support
@@ -62,23 +64,41 @@ configure_pipeline() {
 process_frames() {
 	configure_pipeline
 
-	local yavta="yavta -n $nbufs -c$frame_count"
+	local stream_setting=" --stream-mmap $nbufs --stream-count=$frame_count"
+	local out_width=$(echo $out_size | awk -F 'x' '{print $1}')
+	local out_height=$(echo $out_size | awk -F 'x' '{print $2}')
+	local vf_width=$(echo $vf_size | awk -F 'x' '{print $1}')
+	local vf_height=$(echo $vf_size | awk -F 'x' '{print $2}')
+	local in_width=$(echo $in_size | awk -F 'x' '{print $1}')
+	local in_height=$(echo $in_size | awk -F 'x' '{print $2}')
 
 	# Save the main and viewfinder outputs to disk, capture and drop 3A
-	# statistics. Sleep 500ms between each execution of yavta to keep the
+	# statistics. Sleep 500ms between each execution of v4l2-ctl to keep the
 	# stdout messages readable.
-	$yavta -f $IMGU_OUT_PIXELFORMAT -s $out_size "-F$output_dir/frame-out-#.bin" \
-		$($mediactl -e "$imgu_entity output") &
+	v4l2-ctl -d$($mediactl -e "$imgu_entity output") \
+		--set-fmt-video=pixelformat=$IMGU_OUT_PIXELFORMAT,width=$out_width,height=$out_height \
+		$stream_setting --stream-to=$output_dir/frames-out.bin &
 	sleep 0.5
-	$yavta -f $IMGU_VF_PIXELFORMAT -s $vf_size "-F$output_dir/frame-vf-#.bin" \
-		$($mediactl -e "$imgu_entity viewfinder") &
+	v4l2-ctl -d$($mediactl -e "$imgu_entity viewfinder") \
+		--set-fmt-video=pixelformat=$IMGU_OUT_PIXELFORMAT,width=$vf_width,height=$vf_height \
+		$stream_setting --stream-to=$output_dir/frames-vf.bin &
 	sleep 0.5
-	$yavta $($mediactl -e "$imgu_entity 3a stat") &
+	v4l2-ctl -d $($mediactl -e "$imgu_entity 3a stat") $stream_setting &
 	sleep 0.5
 
 	# Feed the IMGU input.
-	$yavta -f $IMGU_IN_PIXELFORMAT -s $in_size "-F$in_file" \
-		$($mediactl -e "$imgu_entity input")
+
+	# To stream out $frame_count on output and vf nodes, input and parameters nodes need to atleast
+	# stream ($frame_count + $nbufs) frames.
+	local in_stream_count=$(expr $nbufs + $frame_count)
+	v4l2-ctl -d $($mediactl -e "$imgu_entity input") \
+		--set-fmt-video-out=width=$in_width\,height=$in_height\,pixelformat=$IMGU_IN_PIXELFORMAT \
+		--stream-out-mmap $nbufs --stream-from=$in_file --stream-count=$in_stream_count \
+		--stream-loop --stream-poll &
+
+	# The input node would not stream until parameters start streaming.
+	v4l2-ctl -d$($mediactl -e "$imgu_entity parameters") --stream-out-mmap 1  \
+		--stream-count=$in_stream_count --stream-poll
 }
 
 # Convert captured files to ppm
@@ -92,13 +112,15 @@ convert_files() {
 	local height=$(echo $size | awk -F 'x' '{print $2}')
 	local padded_width=$(expr $(expr $width + 63) / 64 \* 64)
 
-	raw2pnm -x$padded_width -y$height -f$format \
-		$output_dir/frame-$type-$index.bin \
+	local bytes_offset=$(expr $index \* $(expr $padded_width \* $height \* 12) / 8)
+	echo $bytes_offset
+	raw2pnm -x$padded_width -y$height -f$format -b $bytes_offset \
+		$output_dir/frames-$type.bin \
 		$output_dir/frame-$type-$index.ppm
 }
 
 run_test() {
-	IMGU_IN_PIXELFORMAT=IPU3_SGRBG10
+	IMGU_IN_PIXELFORMAT=ip3G
 	IMGU_OUT_PIXELFORMAT=NV12
 	IMGU_VF_PIXELFORMAT=NV12
 
@@ -193,6 +215,6 @@ mediactl="media-ctl -d $mdev"
 echo "Using device $mdev"
 
 output_dir="/tmp"
-frame_count=5
-nbufs=7
+frame_count=10
+nbufs=4
 run_test
