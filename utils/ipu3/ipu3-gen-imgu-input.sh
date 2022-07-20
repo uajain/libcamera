@@ -66,10 +66,14 @@ if [[ -z ${in_size+x} ]] ; then
 	exit 1
 fi
 
+colors=(black red green violet yellow orange purple white brown pink gray)
+
 echo "Generating Input file frame-$in_size.raw"
 for i in `seq 0 $(expr $frame_count - 1)`
 do
-	convert -background "#000000" -size $in_size -fill "#ffffff" -pointsize 120 -gravity center label:"Frame $i" frame-$i.ppm
+	color_index=$(expr $i % ${#colors[@]})
+	convert -background "${colors[$color_index]}" -size $in_size -fill "white" \
+		-pointsize 120 -gravity center label:"Frame $i" frame-$i.ppm
 	pnm2raw frame-$i.ppm frame-$i.raw
 	ipu3-pack frame-$i.raw - >> frame-$in_size.raw
 
