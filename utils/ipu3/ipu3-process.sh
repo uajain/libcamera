@@ -83,7 +83,8 @@ process_frames() {
 		--set-fmt-video=pixelformat=$IMGU_OUT_PIXELFORMAT,width=$vf_width,height=$vf_height \
 		$stream_setting --stream-to=$output_dir/frames-vf.bin &
 	sleep 0.5
-	v4l2-ctl -d $($mediactl -e "$imgu_entity 3a stat") $stream_setting &
+	v4l2-ctl -d $($mediactl -e "$imgu_entity 3a stat") $stream_setting \
+		--stream-to=$output_dir/frames-stat.bin &
 	sleep 0.5
 
 	# Feed the IMGU input.
