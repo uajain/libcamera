@@ -8,6 +8,8 @@
 #include <iostream>
 #include <unistd.h>
 
+#include <libcamera/libcamera.h>
+
 #include <gst/gst.h>
 
 #include "gstreamer_test.h"
@@ -28,6 +30,17 @@ protected:
 	{
 		if (status_ != TestPass)
 			return status_;
+
+		libcamera::CameraManager cm;
+		cm.start();
+
+		bool cameraFound = cm.cameras().size() > 1 ? true : false;
+		if (!cameraFound) {
+			cm.stop();
+			return TestSkip;
+		}
+
+		cm.stop();
 
 		const gchar *streamDescription = "videoconvert ! fakesink";
 		g_autoptr(GError) error0 = NULL;
