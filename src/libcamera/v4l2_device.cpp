@@ -744,6 +744,7 @@ void V4L2Device::eventAvailable()
 }
 
 static const std::map<uint32_t, ColorSpace> v4l2ToColorSpace = {
+	{ V4L2_COLORSPACE_DEFAULT, ColorSpace::Default },
 	{ V4L2_COLORSPACE_RAW, ColorSpace::Raw },
 	{ V4L2_COLORSPACE_JPEG, ColorSpace::Jpeg },
 	{ V4L2_COLORSPACE_SRGB, ColorSpace::Srgb },
@@ -754,22 +755,26 @@ static const std::map<uint32_t, ColorSpace> v4l2ToColorSpace = {
 
 static const std::map<uint32_t, ColorSpace::TransferFunction> v4l2ToTransferFunction = {
 	{ V4L2_XFER_FUNC_NONE, ColorSpace::TransferFunction::Linear },
+	{ V4L2_XFER_FUNC_DEFAULT, ColorSpace::TransferFunction::Default },
 	{ V4L2_XFER_FUNC_SRGB, ColorSpace::TransferFunction::Srgb },
 	{ V4L2_XFER_FUNC_709, ColorSpace::TransferFunction::Rec709 },
 };
 
 static const std::map<uint32_t, ColorSpace::YcbcrEncoding> v4l2ToYcbcrEncoding = {
+	{ V4L2_YCBCR_ENC_DEFAULT, ColorSpace::YcbcrEncoding::Default },
 	{ V4L2_YCBCR_ENC_601, ColorSpace::YcbcrEncoding::Rec601 },
 	{ V4L2_YCBCR_ENC_709, ColorSpace::YcbcrEncoding::Rec709 },
 	{ V4L2_YCBCR_ENC_BT2020, ColorSpace::YcbcrEncoding::Rec2020 },
 };
 
 static const std::map<uint32_t, ColorSpace::Range> v4l2ToRange = {
+	{ V4L2_QUANTIZATION_DEFAULT, ColorSpace::Range::Default },
 	{ V4L2_QUANTIZATION_FULL_RANGE, ColorSpace::Range::Full },
 	{ V4L2_QUANTIZATION_LIM_RANGE, ColorSpace::Range::Limited },
 };
 
 static const std::vector<std::pair<ColorSpace, v4l2_colorspace>> colorSpaceToV4l2 = {
+	{ ColorSpace::Default, V4L2_COLORSPACE_DEFAULT },
 	{ ColorSpace::Raw, V4L2_COLORSPACE_RAW },
 	{ ColorSpace::Jpeg, V4L2_COLORSPACE_JPEG },
 	{ ColorSpace::Srgb, V4L2_COLORSPACE_SRGB },
@@ -779,6 +784,7 @@ static const std::vector<std::pair<ColorSpace, v4l2_colorspace>> colorSpaceToV4l
 };
 
 static const std::map<ColorSpace::Primaries, v4l2_colorspace> primariesToV4l2 = {
+	{ ColorSpace::Primaries::Default, V4L2_COLORSPACE_DEFAULT },
 	{ ColorSpace::Primaries::Raw, V4L2_COLORSPACE_RAW },
 	{ ColorSpace::Primaries::Smpte170m, V4L2_COLORSPACE_SMPTE170M },
 	{ ColorSpace::Primaries::Rec709, V4L2_COLORSPACE_REC709 },
@@ -786,18 +792,21 @@ static const std::map<ColorSpace::Primaries, v4l2_colorspace> primariesToV4l2 = 
 };
 
 static const std::map<ColorSpace::TransferFunction, v4l2_xfer_func> transferFunctionToV4l2 = {
+	{ ColorSpace::TransferFunction::Default, V4L2_XFER_FUNC_DEFAULT },
 	{ ColorSpace::TransferFunction::Linear, V4L2_XFER_FUNC_NONE },
 	{ ColorSpace::TransferFunction::Srgb, V4L2_XFER_FUNC_SRGB },
 	{ ColorSpace::TransferFunction::Rec709, V4L2_XFER_FUNC_709 },
 };
 
 static const std::map<ColorSpace::YcbcrEncoding, v4l2_ycbcr_encoding> ycbcrEncodingToV4l2 = {
+	{ ColorSpace::YcbcrEncoding::Default, V4L2_YCBCR_ENC_DEFAULT },
 	{ ColorSpace::YcbcrEncoding::Rec601, V4L2_YCBCR_ENC_601 },
 	{ ColorSpace::YcbcrEncoding::Rec709, V4L2_YCBCR_ENC_709 },
 	{ ColorSpace::YcbcrEncoding::Rec2020, V4L2_YCBCR_ENC_BT2020 },
 };
 
 static const std::map<ColorSpace::Range, v4l2_quantization> rangeToV4l2 = {
+	{ ColorSpace::Range::Default, V4L2_QUANTIZATION_DEFAULT },
 	{ ColorSpace::Range::Full, V4L2_QUANTIZATION_FULL_RANGE },
 	{ ColorSpace::Range::Limited, V4L2_QUANTIZATION_LIM_RANGE },
 };

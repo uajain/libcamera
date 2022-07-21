@@ -16,6 +16,7 @@ class ColorSpace
 {
 public:
 	enum class Primaries {
+		Default,
 		Raw,
 		Smpte170m,
 		Rec709,
@@ -23,12 +24,14 @@ public:
 	};
 
 	enum class TransferFunction {
+		Default,
 		Linear,
 		Srgb,
 		Rec709,
 	};
 
 	enum class YcbcrEncoding {
+		Default,
 		None,
 		Rec601,
 		Rec709,
@@ -36,6 +39,7 @@ public:
 	};
 
 	enum class Range {
+		Default,
 		Full,
 		Limited,
 	};
@@ -45,6 +49,7 @@ public:
 	{
 	}
 
+	static const ColorSpace Default;
 	static const ColorSpace Raw;
 	static const ColorSpace Jpeg;
 	static const ColorSpace Srgb;

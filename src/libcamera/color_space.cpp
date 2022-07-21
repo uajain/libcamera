@@ -132,7 +132,8 @@ std::string ColorSpace::toString() const
 {
 	/* Print out a brief name only for standard color spaces. */
 
-	static const std::array<std::pair<ColorSpace, const char *>, 6> colorSpaceNames = { {
+	static const std::array<std::pair<ColorSpace, const char *>, 7> colorSpaceNames = { {
+		{ ColorSpace::Default, "Default" },
 		{ ColorSpace::Raw, "RAW" },
 		{ ColorSpace::Jpeg, "JPEG" },
 		{ ColorSpace::Srgb, "sRGB" },
@@ -150,23 +151,27 @@ std::string ColorSpace::toString() const
 	/* Assemble a name made of the constituent fields. */
 
 	static const std::map<Primaries, std::string> primariesNames = {
+		{ Primaries::Default, "Default" },
 		{ Primaries::Raw, "RAW" },
 		{ Primaries::Smpte170m, "SMPTE170M" },
 		{ Primaries::Rec709, "Rec709" },
 		{ Primaries::Rec2020, "Rec2020" },
 	};
 	static const std::map<TransferFunction, std::string> transferNames = {
+		{ TransferFunction::Default, "Default" },
 		{ TransferFunction::Linear, "Linear" },
 		{ TransferFunction::Srgb, "sRGB" },
 		{ TransferFunction::Rec709, "Rec709" },
 	};
 	static const std::map<YcbcrEncoding, std::string> encodingNames = {
+		{ YcbcrEncoding::Default, "Default" },
 		{ YcbcrEncoding::None, "None" },
 		{ YcbcrEncoding::Rec601, "Rec601" },
 		{ YcbcrEncoding::Rec709, "Rec709" },
 		{ YcbcrEncoding::Rec2020, "Rec2020" },
 	};
 	static const std::map<Range, std::string> rangeNames = {
+		{ Range::Default, "Default" },
 		{ Range::Full, "Full" },
 		{ Range::Limited, "Limited" },
 	};
@@ -231,6 +236,16 @@ std::string ColorSpace::toString(const std::optional<ColorSpace> &colorSpace)
  * \var ColorSpace::range
  * \brief The pixel range used with by color space
  */
+
+/**
+ * \brief A constant representing a default color space
+ */
+const ColorSpace ColorSpace::Default = {
+	Primaries::Default,
+	TransferFunction::Default,
+	YcbcrEncoding::Default,
+	Range::Default
+};
 
 /**
  * \brief A constant representing a raw color space (from a sensor)
