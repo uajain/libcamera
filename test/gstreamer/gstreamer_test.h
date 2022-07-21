@@ -15,7 +15,7 @@
 class GstreamerTest
 {
 public:
-	GstreamerTest();
+	GstreamerTest(unsigned int numStreams = 1);
 	virtual ~GstreamerTest();
 
 protected:
@@ -27,4 +27,6 @@ protected:
 	GstElement *pipeline_;
 	GstElement *libcameraSrc_;
 	int status_;
+private:
+	bool satisfyCameraStreams(unsigned int numStreams);
 };
