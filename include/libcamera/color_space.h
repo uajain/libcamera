@@ -12,6 +12,9 @@
 
 namespace libcamera {
 
+class CameraConfiguration;
+struct StreamConfiguration;
+
 class ColorSpace
 {
 public:
@@ -59,6 +62,10 @@ public:
 
 	std::string toString() const;
 	static std::string toString(const std::optional<ColorSpace> &colorSpace);
+
+private:
+	friend class CameraConfiguration;
+	void adjust(const StreamConfiguration &cfg);
 };
 
 bool operator==(const ColorSpace &lhs, const ColorSpace &rhs);

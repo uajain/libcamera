@@ -383,6 +383,13 @@ CameraConfiguration::Status CameraConfiguration::validateColorSpaces(ColorSpaceF
 		}
 	}
 
+	if (config_[index].colorSpace) {
+		ColorSpace oldColorspace = config_[index].colorSpace.value();
+		config_[index].colorSpace->adjust(config_[index]);
+		if (oldColorspace != config_[index].colorSpace)
+			status = Adjusted;
+	}
+
 	if (index < 0 || !(flags & ColorSpaceFlag::StreamsShareColorSpace))
 		return status;
 
