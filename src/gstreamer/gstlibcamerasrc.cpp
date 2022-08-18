@@ -37,6 +37,7 @@
 #include <libcamera/camera.h>
 #include <libcamera/camera_manager.h>
 #include <libcamera/control_ids.h>
+#include <libcamera/controls.h>
 
 #include <gst/base/base.h>
 
@@ -131,6 +132,7 @@ struct GstLibcameraSrcState {
 	std::queue<std::unique_ptr<RequestWrap>> completedRequests_
 		LIBCAMERA_TSA_GUARDED_BY(lock_);
 
+	ControlList initControls_;
 	guint group_id_;
 
 	int queueRequest();
@@ -504,6 +506,7 @@ gst_libcamera_src_task_enter(GstTask *task, [[maybe_unused]] GThread *thread,
 		/* Fixate caps and configure the stream. */
 		caps = gst_caps_make_writable(caps);
 		gst_libcamera_configure_stream_from_caps(stream_cfg, caps);
+		gst_libcamera_configure_controls_from_caps(state->initControls_, caps);
 	}
 
 	if (flow_ret != GST_FLOW_OK)
@@ -566,7 +569,7 @@ gst_libcamera_src_task_enter(GstTask *task, [[maybe_unused]] GThread *thread,
 		gst_flow_combiner_add_pad(self->flow_combiner, srcpad);
 	}
 
-	ret = state->cam_->start();
+	ret = state->cam_->start(&state->initControls_);
 	if (ret) {
 		GST_ELEMENT_ERROR(self, RESOURCE, SETTINGS,
 				  ("Failed to start the camera: %s", g_strerror(-ret)),
@@ -576,6 +579,7 @@ gst_libcamera_src_task_enter(GstTask *task, [[maybe_unused]] GThread *thread,
 	}
 
 done:
+	state->initControls_.clear();
 	switch (flow_ret) {
 	case GST_FLOW_NOT_NEGOTIATED:
 		GST_ELEMENT_FLOW_ERROR(self, flow_ret);

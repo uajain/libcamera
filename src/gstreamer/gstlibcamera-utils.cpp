@@ -8,6 +8,7 @@
 
 #include "gstlibcamera-utils.h"
 
+#include <libcamera/control_ids.h>
 #include <libcamera/formats.h>
 
 using namespace libcamera;
@@ -222,6 +223,18 @@ gst_libcamera_configure_stream_from_caps(StreamConfiguration &stream_cfg,
 	gst_structure_get_int(s, "height", &height);
 	stream_cfg.size.width = width;
 	stream_cfg.size.height = height;
+}
+
+void
+gst_libcamera_configure_controls_from_caps(ControlList &controls, [[maybe_unused]] GstCaps *caps)
+{
+	// read framerate from caps - convert to integer and set to frame_time.
+
+	guint frame_time = 100;
+	controls.set(controls::FrameDurationLimits,
+		     Span<const int64_t, 2>({ frame_time, frame_time }));
+
+	// DEBUG:: use ControlList::get() api to see frameDurationLimits is really set in controls
 }
 
 #if !GST_CHECK_VERSION(1, 17, 1)
