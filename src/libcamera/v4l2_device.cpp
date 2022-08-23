@@ -24,6 +24,7 @@
 #include <libcamera/base/log.h>
 #include <libcamera/base/utils.h>
 
+#include "libcamera/internal/formats.h"
 #include "libcamera/internal/sysfs.h"
 
 /**
@@ -816,7 +817,8 @@ static const std::map<ColorSpace::Range, v4l2_quantization> rangeToV4l2 = {
  * \retval std::nullopt One or more V4L2 color space fields were not recognised
  */
 template<typename T>
-std::optional<ColorSpace> V4L2Device::toColorSpace(const T &v4l2Format)
+std::optional<ColorSpace> V4L2Device::toColorSpace(const T &v4l2Format,
+						   const PixelFormatInfo::ColourEncoding &colourEncoding)
 {
 	auto itColor = v4l2ToColorSpace.find(v4l2Format.colorspace);
 	if (itColor == v4l2ToColorSpace.end())
@@ -839,6 +841,9 @@ std::optional<ColorSpace> V4L2Device::toColorSpace(const T &v4l2Format)
 			return std::nullopt;
 
 		colorSpace.ycbcrEncoding = itYcbcrEncoding->second;
+
+		if (colourEncoding == PixelFormatInfo::ColourEncodingRGB)
+			colorSpace.ycbcrEncoding = ColorSpace::YcbcrEncoding::None;
 	}
 
 	if (v4l2Format.quantization != V4L2_QUANTIZATION_DEFAULT) {
@@ -847,14 +852,20 @@ std::optional<ColorSpace> V4L2Device::toColorSpace(const T &v4l2Format)
 			return std::nullopt;
 
 		colorSpace.range = itRange->second;
+
+		if (colourEncoding == PixelFormatInfo::ColourEncodingRGB)
+			colorSpace.range = ColorSpace::Range::Full;
 	}
 
 	return colorSpace;
 }
 
-template std::optional<ColorSpace> V4L2Device::toColorSpace(const struct v4l2_pix_format &);
-template std::optional<ColorSpace> V4L2Device::toColorSpace(const struct v4l2_pix_format_mplane &);
-template std::optional<ColorSpace> V4L2Device::toColorSpace(const struct v4l2_mbus_framefmt &);
+template std::optional<ColorSpace> V4L2Device::toColorSpace(const struct v4l2_pix_format &,
+							    const PixelFormatInfo::ColourEncoding &);
+template std::optional<ColorSpace> V4L2Device::toColorSpace(const struct v4l2_pix_format_mplane &,
+							    const PixelFormatInfo::ColourEncoding &);
+template std::optional<ColorSpace> V4L2Device::toColorSpace(const struct v4l2_mbus_framefmt &,
+							    const PixelFormatInfo::ColourEncoding &);
 
 /**
  * \brief Fill in the color space fields of a V4L2 format from a ColorSpace

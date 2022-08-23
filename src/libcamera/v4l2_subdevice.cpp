@@ -502,7 +502,10 @@ int V4L2Subdevice::getFormat(unsigned int pad, V4L2SubdeviceFormat *format,
 	format->size.width = subdevFmt.format.width;
 	format->size.height = subdevFmt.format.height;
 	format->mbus_code = subdevFmt.format.code;
-	format->colorSpace = toColorSpace(subdevFmt.format);
+	auto iter = formatInfoMap.find(format->mbus_code);
+	if (iter == formatInfoMap.end())
+		return -EINVAL;
+	format->colorSpace = toColorSpace(subdevFmt.format, iter->second.colourEncoding);
 
 	return 0;
 }
@@ -548,7 +551,10 @@ int V4L2Subdevice::setFormat(unsigned int pad, V4L2SubdeviceFormat *format,
 	format->size.width = subdevFmt.format.width;
 	format->size.height = subdevFmt.format.height;
 	format->mbus_code = subdevFmt.format.code;
-	format->colorSpace = toColorSpace(subdevFmt.format);
+	auto iter = formatInfoMap.find(format->mbus_code);
+	if (iter == formatInfoMap.end())
+		return -EINVAL;
+	format->colorSpace = toColorSpace(subdevFmt.format, iter->second.colourEncoding);
 
 	return 0;
 }
