@@ -503,7 +503,7 @@ gst_libcamera_src_task_enter(GstTask *task, [[maybe_unused]] GThread *thread,
 
 		/* Fixate caps and configure the stream. */
 		caps = gst_caps_make_writable(caps);
-		gst_libcamera_configure_stream_from_caps(stream_cfg, caps);
+		gst_libcamera_configure_stream_from_caps(state->config_, stream_cfg, caps);
 	}
 
 	if (flow_ret != GST_FLOW_OK)
