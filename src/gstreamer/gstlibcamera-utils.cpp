@@ -316,10 +316,9 @@ gst_libcamera_stream_configuration_to_caps(const StreamConfiguration &stream_cfg
 	return caps;
 }
 
-void
-gst_libcamera_configure_stream_from_caps(std::unique_ptr<CameraConfiguration> &cam_cfg,
-					 StreamConfiguration &stream_cfg,
-					 GstCaps *caps)
+void gst_libcamera_configure_stream_from_caps(std::unique_ptr<CameraConfiguration> &cam_cfg,
+					      StreamConfiguration &stream_cfg,
+					      GstCaps *caps)
 {
 	GstVideoFormat gst_format = pixel_format_to_gst_format(stream_cfg.pixelFormat);
 	guint i;
@@ -412,7 +411,7 @@ gst_libcamera_configure_stream_from_caps(std::unique_ptr<CameraConfiguration> &c
 				continue;
 			}
 			stream_cfg.colorSpace = colorspace_from_colorimetry(colorimetry);
-			
+
 			/* Validate the configuration and check if the requested
 			 * colorimetry can be applied to the sensor.
 			 */
