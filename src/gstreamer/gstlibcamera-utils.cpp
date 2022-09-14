@@ -404,21 +404,22 @@ void gst_libcamera_configure_stream_from_caps(std::unique_ptr<CameraConfiguratio
 		StreamConfiguration pristine_stream_cfg = stream_cfg;
 		for (i = 0; i < gst_value_list_get_size(colorimetry_); i++) {
 			const GValue *val = gst_value_list_get_value(colorimetry_, i);
-			GstVideoColorimetry colorimetry, colorimetry_new;
+			GstVideoColorimetry colorimetry;
 
 			if (!gst_video_colorimetry_from_string(&colorimetry, g_value_get_string(val))) {
 				g_critical("Invalid colorimetry %s", g_value_get_string(val));
 				continue;
 			}
-			stream_cfg.colorSpace = colorspace_from_colorimetry(colorimetry);
+			std::optional<ColorSpace> clrSpace = colorspace_from_colorimetry(colorimetry);
+			stream_cfg.colorSpace = clrSpace;
 
 			/* Validate the configuration and check if the requested
 			 * colorimetry can be applied to the sensor.
 			 */
 			if (cam_cfg->validate() != CameraConfiguration::Invalid) {
-				colorimetry_new = colorimetry_from_colorspace(stream_cfg.colorSpace.value());
-				if (gst_video_colorimetry_is_equal(&colorimetry, &colorimetry_new)) {
-					g_print("Selected colorimetry %s\n", gst_video_colorimetry_to_string(&colorimetry_new));
+				/* Check the colorspace returned after validation, with the colorspace before validation */
+				if (stream_cfg.colorSpace == clrSpace) {
+					g_print("Selected colorimetry %s\n", gst_video_colorimetry_to_string(&colorimetry));
 					break;
 				} else
 					stream_cfg = pristine_stream_cfg;
