@@ -400,35 +400,38 @@ void gst_libcamera_configure_stream_from_caps(std::unique_ptr<CameraConfiguratio
 		return;
 
 	/* Configure Colorimetry */
+	GstVideoColorimetry colorimetry;
 	if (GST_VALUE_HOLDS_LIST(colorimetry_)) {
 		StreamConfiguration pristine_stream_cfg = stream_cfg;
 		for (i = 0; i < gst_value_list_get_size(colorimetry_); i++) {
 			const GValue *val = gst_value_list_get_value(colorimetry_, i);
-			GstVideoColorimetry colorimetry;
 
 			if (!gst_video_colorimetry_from_string(&colorimetry, g_value_get_string(val))) {
-				g_critical("Invalid colorimetry %s", g_value_get_string(val));
+				g_warning("Invalid colorimetry %s, trying next option", g_value_get_string(val));
 				continue;
 			}
+
 			std::optional<ColorSpace> clrSpace = colorspace_from_colorimetry(colorimetry);
 			stream_cfg.colorSpace = clrSpace;
 
 			/* Validate the configuration and check if the requested
-			 * colorimetry can be applied to the sensor.
+			 * colorimetry can be applied to the sensor. Otherwise,
+			 * restore the configuration back to pristine one.
 			 */
 			if (cam_cfg->validate() != CameraConfiguration::Invalid) {
 				/* Check the colorspace returned after validation, with the colorspace before validation */
 				if (stream_cfg.colorSpace == clrSpace) {
 					g_print("Selected colorimetry %s\n", gst_video_colorimetry_to_string(&colorimetry));
 					break;
-				} else
+				} else {
 					stream_cfg = pristine_stream_cfg;
+				}
 			}
 		}
 	} else if (G_VALUE_HOLDS_STRING(colorimetry_)) {
-		GstVideoColorimetry colorimetry;
 		if (!gst_video_colorimetry_from_string(&colorimetry, g_value_get_string(colorimetry_)))
 			g_critical("Invalid colorimetry %s", g_value_get_string(colorimetry_));
+
 		stream_cfg.colorSpace = colorspace_from_colorimetry(colorimetry);
 	} else {
 		GST_WARNING("colorimetry field type should only be string or list.");
